@@ -10,17 +10,47 @@ updated: 2026-07-26
 
 # Installation
 
-## Release archive
+## Verified installer
+
+Install or update the latest stable release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/main/scripts/install.sh | sh
+```
+
+Pin both the installer source and selected binary release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.0/scripts/install.sh | sh -s -- --version=v0.1.0
+```
+
+Review a downloaded script before running it when your environment requires
+that policy. The installer supports Linux and macOS on amd64 and arm64. It
+installs only `inwx` into `~/.local/bin`; running it again is the update path.
+It never asks for, reads, stores, or migrates INWX credentials.
+
+`curl`, `tar`, and
+[Cosign](https://docs.sigstore.dev/cosign/system_config/installation/) are
+required. The installer authenticates `checksums.txt` against the exact
+`k2b-dev/inwx-cli` release workflow and selected tag, verifies the archive
+SHA-256, checks the binary version, and replaces an existing binary atomically.
+Any failed download or verification leaves the previous binary unchanged.
+
+Use `--system` for `/usr/local/bin`, `--prefix=DIR` for another absolute
+directory, `--version=vX.Y.Z` for an exact stable release, and `--yes` for a
+non-interactive confirmation. An explicit older release also requires
+`--allow-downgrade`; `latest` resolution cannot downgrade.
+
+This is an unofficial community installer. It is not affiliated with, endorsed
+by, maintained by, or supported by INWX GmbH.
+
+## Manual release archive
 
 Releases are published at
 [github.com/k2b-dev/inwx-cli/releases](https://github.com/k2b-dev/inwx-cli/releases).
 Select the archive for `linux` or `darwin` and `amd64` or `arm64`, verify it
 against the release checksum and signature materials, then place `inwx` on
 `PATH`.
-
-The verified installer and its canonical one-line command are documented with
-the release that first includes it. The installer installs only the CLI; it
-does not read or migrate INWX credentials.
 
 ## Build from source
 

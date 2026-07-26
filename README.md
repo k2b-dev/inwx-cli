@@ -17,7 +17,7 @@ transfers, billing, or account administration.
 The v0.1 command and provider contract is locked in
 [`docs/architecture-v0.1.md`](docs/architecture-v0.1.md). Authentication and
 DNS inventory and preview-before-apply record mutations are implemented.
-Release packaging is still in progress.
+The verified installer is implemented. Release packaging is still in progress.
 
 Development is tracked in Dex:
 
@@ -97,6 +97,46 @@ Use `--value-file` or `--value-stdin` instead of `--value` when a transient DNS
 value must not appear in process arguments. Global flags precede the command.
 Run `./inwx --help` for the complete command surface.
 
+## Verified installer
+
+Install or update the latest stable release:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/main/scripts/install.sh | sh
+```
+
+For a release-pinned installer and binary:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.0/scripts/install.sh | sh -s -- --version=v0.1.0
+```
+
+Reviewing the script before piping it to a shell is recommended. The installer
+supports Linux and macOS on amd64 and arm64, installs only `inwx` to
+`~/.local/bin` by default, and uses the same command again for updates. It
+requires `curl`, `tar`, and
+[Cosign](https://docs.sigstore.dev/cosign/system_config/installation/).
+
+The downloaded checksum manifest must have a valid keyless Cosign signature
+from the exact `k2b-dev/inwx-cli` release workflow and selected tag. The
+archive must then match its SHA-256 entry and contain a binary reporting the
+selected version. A failed verification leaves any installed binary unchanged.
+
+Options:
+
+```text
+--system
+--prefix=DIR
+--version=vX.Y.Z
+--allow-downgrade
+--yes
+--help
+```
+
+An explicit older version additionally requires `--allow-downgrade`; resolving
+`latest` never authorizes a downgrade. The installer never reads, writes, or
+migrates INWX credentials.
+
 ## Verification
 
 ```sh
@@ -104,6 +144,7 @@ gofmt -w cmd internal
 go vet ./...
 go test ./...
 go test -race ./...
+shellcheck -s sh scripts/install.sh
 ```
 
 Tests use local HTTP fakes. Real integration work is restricted to INWX OT&E;
