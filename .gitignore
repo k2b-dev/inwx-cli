@@ -3,3 +3,7 @@
 !.env.example
 /inwx
 dist/
+docs-site/node_modules/
+docs-site/.fibel/
+docs-site/dist/
+.playwright-cli/

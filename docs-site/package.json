@@ -1,0 +1,14 @@
+{
+  "name": "inwx-cli-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "fibel build --config fibel.config.ts",
+    "dev": "fibel dev --config fibel.config.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@valentinkolb/fibel": "0.0.9"
+  },
+  "packageManager": "bun@1.3.14"
+}
