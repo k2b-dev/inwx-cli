@@ -54,7 +54,7 @@ never accepted as command-line arguments.
 
 ## Development build
 
-Go 1.24 or newer is required:
+Go 1.25 or newer is required:
 
 ```sh
 CGO_ENABLED=0 go build -o inwx ./cmd/inwx

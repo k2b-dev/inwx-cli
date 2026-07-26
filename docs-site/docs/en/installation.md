@@ -54,7 +54,7 @@ against the release checksum and signature materials, then place `inwx` on
 
 ## Build from source
 
-Go 1.24 or newer is required.
+Go 1.25 or newer is required.
 
 ```sh
 git clone https://github.com/k2b-dev/inwx-cli.git
