@@ -1,0 +1,52 @@
+{
+  "code": 1000,
+  "msg": "Command completed successfully",
+  "resData": {
+    "roId": 70001,
+    "domain": "example.test",
+    "type": "MASTER",
+    "count": 5,
+    "record": [
+      {
+        "id": "81001",
+        "name": "a.example.test",
+        "type": "A",
+        "content": "192.0.2.1",
+        "ttl": 300,
+        "prio": 0
+      },
+      {
+        "id": "81002",
+        "name": "aaaa.example.test",
+        "type": "AAAA",
+        "content": "2001:db8::1",
+        "ttl": 3600,
+        "prio": 0
+      },
+      {
+        "id": "81003",
+        "name": "www.example.test",
+        "type": "CNAME",
+        "content": "target.example.test",
+        "ttl": 3600,
+        "prio": 0
+      },
+      {
+        "id": "81004",
+        "name": "_validation.example.test",
+        "type": "TXT",
+        "content": "fixture value with spaces",
+        "ttl": 300,
+        "prio": 0
+      },
+      {
+        "id": "81005",
+        "name": "example.test",
+        "type": "MX",
+        "content": "mail.example.test",
+        "ttl": 3600,
+        "prio": 10
+      }
+    ]
+  }
+}

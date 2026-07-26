@@ -1,0 +1,14 @@
+{
+  "code": 1000,
+  "msg": "Command completed successfully",
+  "resData": {
+    "count": 2,
+    "domains": [
+      {
+        "roId": 70001,
+        "domain": "example.test",
+        "type": "MASTER"
+      }
+    ]
+  }
+}
