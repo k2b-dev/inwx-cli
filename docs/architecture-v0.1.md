@@ -359,3 +359,10 @@ zero zones.
 Credential-free response fixtures live in `internal/inwx/testdata`. They model
 string record IDs and the complete required fields for A, AAAA, CNAME, TXT, and
 MX.
+
+The implemented CLI was then exercised against a fresh disposable OT&E zone.
+For one unique TXT record, create, update, and delete each ran as a separate
+preview and apply with the preview's exact token. Every apply used one mutation
+request, re-read the complete zone, and verified the requested state. The
+record and disposable zone were deleted, and a final zone listing verified
+that the account again contained zero zones.

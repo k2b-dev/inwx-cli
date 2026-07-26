@@ -271,6 +271,67 @@ func (client *Client) ListRecords(ctx context.Context, zone string) ([]dns.Recor
 	return records, nil
 }
 
+func (client *Client) CreateRecord(ctx context.Context, record dns.Record) (string, error) {
+	var data struct {
+		ID dns.StringID `json:"id"`
+	}
+	if err := client.call(ctx, "nameserver.createRecord", recordParams(record, true), &data, false); err != nil {
+		return "", err
+	}
+	if data.ID == "" {
+		return "", errors.New("INWX create response is missing the record ID")
+	}
+	return string(data.ID), nil
+}
+
+func (client *Client) UpdateRecord(ctx context.Context, record dns.Record) error {
+	id, err := apiRecordID(record.ID)
+	if err != nil {
+		return err
+	}
+	params := recordParams(record, false)
+	params["id"] = id
+	return client.call(ctx, "nameserver.updateRecord", params, nil, false)
+}
+
+func (client *Client) DeleteRecord(ctx context.Context, id string) error {
+	apiID, err := apiRecordID(id)
+	if err != nil {
+		return err
+	}
+	return client.call(ctx, "nameserver.deleteRecord", map[string]uint64{"id": apiID}, nil, false)
+}
+
+func recordParams(record dns.Record, includeDomain bool) map[string]any {
+	content := record.Value
+	if record.Type == "CNAME" || record.Type == "MX" {
+		content = strings.TrimSuffix(content, ".")
+	}
+	priority := uint16(0)
+	if record.Priority != nil {
+		priority = *record.Priority
+	}
+	params := map[string]any{
+		"name":    strings.TrimSuffix(record.FQDN, "."),
+		"type":    record.Type,
+		"content": content,
+		"ttl":     record.TTL,
+		"prio":    priority,
+	}
+	if includeDomain {
+		params["domain"] = strings.TrimSuffix(record.Zone, ".")
+	}
+	return params
+}
+
+func apiRecordID(id string) (uint64, error) {
+	value, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		return 0, errors.New("record ID returned by INWX is not an unsigned integer")
+	}
+	return value, nil
+}
+
 func (client *Client) call(
 	ctx context.Context,
 	method string,

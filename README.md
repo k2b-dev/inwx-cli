@@ -16,8 +16,8 @@ transfers, billing, or account administration.
 
 The v0.1 command and provider contract is locked in
 [`docs/architecture-v0.1.md`](docs/architecture-v0.1.md). Authentication and
-read-only DNS inventory are implemented. Previewed mutations and release
-packaging are still in progress.
+DNS inventory and preview-before-apply record mutations are implemented.
+Release packaging is still in progress.
 
 Development is tracked in Dex:
 
@@ -31,7 +31,7 @@ preview-before-apply mutations, INWX OT&E integration tests, a reusable skill
 under `skills/inwx`, a Fibel documentation site, and a cryptographically
 verified installer/updater modeled on the fd0.sh installation flow.
 
-## Planned v0.1 commands
+## v0.1 commands
 
 ```text
 inwx version
@@ -72,8 +72,30 @@ export INWX_PASSWORD_FILE="$HOME/.config/inwx-cli/ote/password"
 ./inwx --json --environment ote dns records list example.com
 ```
 
-Global flags precede the command. Run `./inwx --help` for the complete
-read-only command surface.
+Preview a change without writing:
+
+```sh
+./inwx --json --environment ote dns records create example.com \
+  --type A --name www --value 192.0.2.1
+```
+
+The response contains the exact before/after state and an `expect` token.
+Apply only that preview by repeating the command with both safeguards:
+
+```sh
+./inwx --json --environment ote dns records create example.com \
+  --type A --name www --value 192.0.2.1 \
+  --expect '<token-from-preview>' --apply
+```
+
+Update and delete require the exact provider record ID returned by `records
+list`; names, types, and values never select a destructive target. The CLI
+re-reads the complete zone after a write and fails if the requested state is
+not observed.
+
+Use `--value-file` or `--value-stdin` instead of `--value` when a transient DNS
+value must not appear in process arguments. Global flags precede the command.
+Run `./inwx --help` for the complete command surface.
 
 ## Verification
 
@@ -86,3 +108,16 @@ go test -race ./...
 
 Tests use local HTTP fakes. Real integration work is restricted to INWX OT&E;
 automated tests never mutate production.
+
+An opt-in CRUD test requires an existing disposable OT&E zone:
+
+```sh
+INWX_ENVIRONMENT=ote \
+INWX_INTEGRATION=1 \
+INWX_TEST_ZONE=disposable-zone.example \
+go test ./internal/cli -run '^TestOTERecordCRUD$' -count=1 -v
+```
+
+The test uses the normal credential environment or `_FILE` sources, creates a
+unique TXT record, updates it, deletes it, and registers cleanup before the
+first update. It refuses to run unless `INWX_ENVIRONMENT=ote`.

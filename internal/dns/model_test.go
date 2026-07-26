@@ -112,3 +112,58 @@ func TestStringIDAcceptsStringAndInteger(t *testing.T) {
 		}
 	}
 }
+
+func TestNewRecordNormalizesMutableTypes(t *testing.T) {
+	t.Parallel()
+	priority := uint16(10)
+	cases := []struct {
+		recordType string
+		value      string
+		priority   *uint16
+		want       string
+	}{
+		{"A", "192.0.2.1", nil, "192.0.2.1"},
+		{"AAAA", "2001:0db8::1", nil, "2001:db8::1"},
+		{"CNAME", "Target.Example", nil, "target.example."},
+		{"TXT", "exact text", nil, "exact text"},
+		{"MX", "Mail.Example.", &priority, "mail.example."},
+	}
+	for _, test := range cases {
+		test := test
+		t.Run(test.recordType, func(t *testing.T) {
+			record, err := NewRecord(
+				"example.test", "WWW", test.recordType, test.value, 300, test.priority,
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if record.Name != "www" || record.Value != test.want {
+				t.Fatalf("unexpected record %#v", record)
+			}
+		})
+	}
+}
+
+func TestNewRecordRejectsMalformedAndUnsupportedInput(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		recordType string
+		value      string
+		ttl        int
+		priority   *uint16
+	}{
+		{"A", "2001:db8::1", 300, nil},
+		{"AAAA", "192.0.2.1", 300, nil},
+		{"TXT", "line\nbreak", 300, nil},
+		{"SRV", "value", 300, nil},
+		{"A", "192.0.2.1", 299, nil},
+		{"MX", "mail.example", 300, nil},
+	}
+	for _, test := range cases {
+		if _, err := NewRecord(
+			"example.test", "www", test.recordType, test.value, test.ttl, test.priority,
+		); err == nil {
+			t.Fatalf("accepted invalid %s value %q", test.recordType, test.value)
+		}
+	}
+}

@@ -161,6 +161,10 @@ func TestHelpAtEveryLevel(t *testing.T) {
 		{"dns", "records", "--help"},
 		{"dns", "records", "list", "--help"},
 		{"dns", "records", "list", "example.test", "--help"},
+		{"dns", "records", "create", "--help"},
+		{"dns", "records", "create", "example.test", "--help"},
+		{"dns", "records", "update", "--help"},
+		{"dns", "records", "delete", "--help"},
 	}
 	for _, args := range cases {
 		args := args

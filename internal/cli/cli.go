@@ -30,6 +30,7 @@ type Options struct {
 	EndpointOverride string
 	Now              func() time.Time
 	Sleep            func(context.Context, time.Duration) error
+	Stdin            io.Reader
 }
 
 type globalOptions struct {
@@ -217,6 +218,7 @@ func runDNS(
 		_, _ = io.WriteString(stdout, `Usage:
   inwx [global flags] dns zones list
   inwx [global flags] dns records list <zone> [--type TYPE] [--name NAME]
+  inwx [global flags] dns records create|update|delete ...
 `)
 		return nil
 	}
@@ -239,10 +241,12 @@ func runDNS(
 		return runZones(ctx, stdout, global, environment, options)
 	case "records":
 		if len(args) == 2 && isHelp(args[1]) {
-			_, _ = fmt.Fprintln(
-				stdout,
-				"Usage: inwx [global flags] dns records list <zone> [--type TYPE] [--name NAME]",
-			)
+			_, _ = io.WriteString(stdout, `Usage:
+  inwx [global flags] dns records list <zone> [--type TYPE] [--name NAME]
+  inwx [global flags] dns records create <zone> --type TYPE --name NAME ...
+  inwx [global flags] dns records update <zone> --id ID ...
+  inwx [global flags] dns records delete <zone> --id ID ...
+`)
 			return nil
 		}
 		if len(args) == 3 && args[1] == "list" && isHelp(args[2]) {
@@ -252,10 +256,14 @@ func runDNS(
 			)
 			return nil
 		}
-		if args[1] != "list" {
-			return usageError(errors.New("usage: inwx dns records list <zone>"))
+		switch args[1] {
+		case "list":
+			return runRecords(ctx, args[2:], stdout, global, environment, options)
+		case "create", "update", "delete":
+			return runRecordMutation(ctx, args[1], args[2:], stdout, global, environment, options)
+		default:
+			return usageError(errors.New("usage: inwx dns records list|create|update|delete"))
 		}
-		return runRecords(ctx, args[2:], stdout, global, environment, options)
 	default:
 		return usageError(fmt.Errorf("unknown dns command %q", args[0]))
 	}
@@ -594,6 +602,9 @@ Usage:
   inwx [global flags] auth check
   inwx [global flags] dns zones list
   inwx [global flags] dns records list <zone> [--type TYPE] [--name NAME]
+  inwx [global flags] dns records create <zone> --type TYPE --name NAME (--value VALUE | --value-file PATH | --value-stdin)
+  inwx [global flags] dns records update <zone> --id ID [changed fields]
+  inwx [global flags] dns records delete <zone> --id ID
 
 Global flags:
   --json                         emit versioned JSON

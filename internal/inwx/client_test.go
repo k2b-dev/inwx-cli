@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/k2b-dev/inwx-cli/internal/dns"
 )
 
 func TestLoginAndTwoFactorUnlock(t *testing.T) {
@@ -299,6 +301,51 @@ func TestRecordCountMismatchFailsClosed(t *testing.T) {
 	client := newTestClient(t, server.URL, Options{})
 	if _, err := client.ListRecords(context.Background(), "example.test."); err == nil {
 		t.Fatal("expected partial response error")
+	}
+}
+
+func TestMutationMethodsUseExactParametersAndNeverRetry(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		calls.Add(1)
+		var call struct {
+			Method string         `json:"method"`
+			Params map[string]any `json:"params"`
+		}
+		if err := json.NewDecoder(request.Body).Decode(&call); err != nil {
+			t.Error(err)
+			return
+		}
+		if call.Method == "nameserver.createRecord" {
+			if call.Params["domain"] != "example.test" ||
+				call.Params["name"] != "www.example.test" ||
+				call.Params["content"] != "192.0.2.1" ||
+				call.Params["type"] != "A" {
+				t.Errorf("unexpected create params %#v", call.Params)
+			}
+			writer.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		writeEnvelope(t, writer, 1000, struct{}{})
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL, Options{Retries: 5})
+	record := dns.Record{
+		Zone:  "example.test.",
+		Name:  "www",
+		FQDN:  "www.example.test.",
+		Type:  "A",
+		Value: "192.0.2.1",
+		TTL:   3600,
+	}
+	if _, err := client.CreateRecord(context.Background(), record); err == nil {
+		t.Fatal("expected create transport error")
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("mutation retried %d times", calls.Load())
 	}
 }
 

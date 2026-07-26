@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	minTTL = 300
-	maxTTL = 2147483647
+	MinTTL = 300
+	MaxTTL = 2147483647
 )
 
 type StringID string
@@ -146,8 +146,8 @@ func FromAPI(zone string, raw RawRecord) (Record, error) {
 	if recordType == "" || recordType != raw.Type {
 		return Record{}, errors.New("API record type must be non-empty uppercase text")
 	}
-	if raw.TTL < minTTL || raw.TTL > maxTTL {
-		return Record{}, fmt.Errorf("API record TTL %d is outside %d..%d", raw.TTL, minTTL, maxTTL)
+	if raw.TTL < MinTTL || raw.TTL > MaxTTL {
+		return Record{}, fmt.Errorf("API record TTL %d is outside %d..%d", raw.TTL, MinTTL, MaxTTL)
 	}
 
 	value, err := normalizeValue(recordType, raw.Content)
@@ -175,6 +175,59 @@ func FromAPI(zone string, raw RawRecord) (Record, error) {
 		record.Priority = &priority
 	}
 	return record, nil
+}
+
+func NewRecord(
+	zone string,
+	name string,
+	recordType string,
+	value string,
+	ttl int,
+	priority *uint16,
+) (Record, error) {
+	canonicalZone, err := NormalizeZone(zone)
+	if err != nil {
+		return Record{}, err
+	}
+	canonicalName, fqdn, err := NormalizeInputName(name, canonicalZone)
+	if err != nil {
+		return Record{}, err
+	}
+	recordType = strings.ToUpper(recordType)
+	if !IsMutableType(recordType) {
+		return Record{}, errors.New("record type must be A, AAAA, CNAME, TXT, or MX")
+	}
+	if ttl < MinTTL || ttl > MaxTTL {
+		return Record{}, fmt.Errorf("TTL must be between %d and %d", MinTTL, MaxTTL)
+	}
+	if recordType == "MX" && priority == nil {
+		return Record{}, errors.New("priority is required for MX records")
+	}
+	if recordType != "MX" && priority != nil {
+		return Record{}, errors.New("priority is only valid for MX records")
+	}
+	canonicalValue, err := normalizeValue(recordType, value)
+	if err != nil {
+		return Record{}, fmt.Errorf("invalid %s record value: %w", recordType, err)
+	}
+	return Record{
+		Zone:     canonicalZone,
+		Name:     canonicalName,
+		FQDN:     fqdn,
+		Type:     recordType,
+		Value:    canonicalValue,
+		TTL:      ttl,
+		Priority: priority,
+	}, nil
+}
+
+func IsMutableType(recordType string) bool {
+	switch recordType {
+	case "A", "AAAA", "CNAME", "TXT", "MX":
+		return true
+	default:
+		return false
+	}
 }
 
 func SortRecords(records []Record) {
