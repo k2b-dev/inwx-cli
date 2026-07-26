@@ -45,6 +45,25 @@ inwx --help
 See [installation options](docs-site/docs/en/installation.md) for custom
 prefixes, system-wide installation, and downgrade protection.
 
+## Install the agent skill
+
+The repository also includes an optional `inwx` skill that guides compatible
+coding agents through credential-safe inspection and preview-before-apply DNS
+changes. Install it with either Bun:
+
+```sh
+bunx skills add k2b-dev/inwx-cli
+```
+
+or npm:
+
+```sh
+npx skills add k2b-dev/inwx-cli
+```
+
+Run one of these commands, not both. The skill uses the installed `inwx` binary;
+it does not install the CLI or store INWX credentials.
+
 ## Configure credentials
 
 `inwx` reads credentials from environment variables or protected files. File
