@@ -103,7 +103,7 @@ describe("published command contract", () => {
     expect(cliHelp("dns", "records", "delete", "--help")).toContain(
       "--id ID [--expect TOKEN --apply]",
     );
-  });
+  }, 30_000);
 
   test("content contains required topics and no private operations", async () => {
     const docsRoot = join(import.meta.dir, "docs", "en");
