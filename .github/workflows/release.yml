@@ -98,6 +98,8 @@ jobs:
           merge-multiple: true
       - name: Set up Cosign
         uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+        with:
+          cosign-release: v2.6.4
       - name: Inspect archives and skill bundle
         run: |
           EXPECTED="inwx_darwin_amd64.tar.gz
