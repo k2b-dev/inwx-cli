@@ -11,8 +11,9 @@ available at <https://www.inwx.com/>.
 
 ## Scope
 
-v0.1 manages individual DNS records in existing INWX nameserver zones. It
-supports A, AAAA, CNAME, TXT, and MX records.
+v0.1 manages individual A, AAAA, CNAME, TXT, and MX records in existing INWX
+nameserver zones. Read-only inventory includes every record type returned by
+INWX so unsupported existing data is visible and can be preserved.
 
 It does not register or transfer domains, manage contacts, billing, DNSSEC,
 nameserver delegation, bulk desired state, ACME, background reconciliation, or
@@ -192,11 +193,14 @@ Normalization rules:
 - TXT input is the exact unquoted text. Surrounding quote characters are data,
   not zone-file syntax, and are not stripped. Newlines and NUL bytes are
   rejected. TXT values are never IDNA-normalized.
-- Types are upper-cased and limited to A, AAAA, CNAME, TXT, and MX.
+- Types are emitted as upper-case text. Read-only inventory passes other INWX
+  types through with their API content unchanged. Create and update are limited
+  to A, AAAA, CNAME, TXT, and MX.
 - TTL is an integer from 300 through 2147483647 seconds. Values below INWX's
   documented minimum are rejected rather than silently increased.
-- MX priority is an integer from 0 through 65535. Priority is omitted from JSON
-  for non-MX records.
+- MX priority is an integer from 0 through 65535. Read-only foreign types retain
+  a non-zero API priority; priority is otherwise omitted from JSON. Mutations
+  accept priority only for MX.
 - Output is sorted by canonical name, type, priority, value, then ID.
 
 The API representation uses the absolute name without a trailing dot and

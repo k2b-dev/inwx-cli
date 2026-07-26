@@ -15,8 +15,9 @@ transfers, billing, or account administration.
 ## Status
 
 The v0.1 command and provider contract is locked in
-[`docs/architecture-v0.1.md`](docs/architecture-v0.1.md). Implementation is in
-progress.
+[`docs/architecture-v0.1.md`](docs/architecture-v0.1.md). Authentication and
+read-only DNS inventory are implemented. Previewed mutations and release
+packaging are still in progress.
 
 Development is tracked in Dex:
 
@@ -50,3 +51,38 @@ verifies the result.
 Credentials are read only from `INWX_USERNAME`, `INWX_PASSWORD`,
 `INWX_SHARED_SECRET`, or their `_FILE` variants. Passwords and TOTP secrets are
 never accepted as command-line arguments.
+
+## Development build
+
+Go 1.24 or newer is required:
+
+```sh
+CGO_ENABLED=0 go build -o inwx ./cmd/inwx
+```
+
+Keep credentials outside the repository. `_FILE` variables avoid placing
+secret values in the environment itself:
+
+```sh
+export INWX_USERNAME_FILE="$HOME/.config/inwx-cli/ote/username"
+export INWX_PASSWORD_FILE="$HOME/.config/inwx-cli/ote/password"
+
+./inwx --environment ote auth check
+./inwx --environment ote dns zones list
+./inwx --json --environment ote dns records list example.com
+```
+
+Global flags precede the command. Run `./inwx --help` for the complete
+read-only command surface.
+
+## Verification
+
+```sh
+gofmt -w cmd internal
+go vet ./...
+go test ./...
+go test -race ./...
+```
+
+Tests use local HTTP fakes. Real integration work is restricted to INWX OT&E;
+automated tests never mutate production.
