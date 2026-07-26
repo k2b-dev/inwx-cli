@@ -6,4 +6,6 @@ dist/
 docs-site/node_modules/
 docs-site/.fibel/
 docs-site/dist/
+docs-site/playwright-report/
+docs-site/test-results/
 .playwright-cli/
