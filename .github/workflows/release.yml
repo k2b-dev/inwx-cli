@@ -1,0 +1,172 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            os: linux
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            os: linux
+            arch: arm64
+          - runner: macos-15-intel
+            os: darwin
+            arch: amd64
+          - runner: macos-15
+            os: darwin
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Validate tag and runner
+        env:
+          EXPECTED_OS: ${{ matrix.os }}
+          EXPECTED_ARCH: ${{ matrix.arch }}
+        run: |
+          printf '%s\n' "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'
+          test "$(go env GOOS)" = "$EXPECTED_OS"
+          test "$(go env GOARCH)" = "$EXPECTED_ARCH"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD
+      - name: Build and smoke release binary
+        env:
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          BUILD_DATE=$(git show -s --format=%cI "$GITHUB_SHA")
+          CGO_ENABLED=0 go build -trimpath \
+            -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${GITHUB_SHA} -X main.date=${BUILD_DATE}" \
+            -o "$RUNNER_TEMP/inwx" ./cmd/inwx
+          "$RUNNER_TEMP/inwx" version | grep -F "inwx ${VERSION} (commit ${GITHUB_SHA}, built ${BUILD_DATE})"
+          "$RUNNER_TEMP/inwx" --help | grep -F "unofficial community CLI"
+          "$RUNNER_TEMP/inwx" --json version | grep -F '"schema_version":"inwx.cli/v1"'
+          STAGE="$RUNNER_TEMP/release-stage"
+          mkdir -p "$STAGE/skills"
+          cp "$RUNNER_TEMP/inwx" "$STAGE/inwx"
+          cp LICENSE "$STAGE/LICENSE"
+          cp -R skills/inwx "$STAGE/skills/inwx"
+          tar -czf "$RUNNER_TEMP/inwx_${TARGET_OS}_${TARGET_ARCH}.tar.gz" \
+            -C "$STAGE" inwx LICENSE skills/inwx
+      - name: Upload release archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: inwx-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/inwx_${{ matrix.os }}_${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Verify and publish
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Download release archives
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: inwx-*
+          path: release
+          merge-multiple: true
+      - name: Set up Cosign
+        uses: sigstore/cosign-installer@ba7bc0a3fef59531c69a25acd34668d6d3fe6f22 # v4.1.0
+      - name: Inspect archives and skill bundle
+        run: |
+          EXPECTED="inwx_darwin_amd64.tar.gz
+          inwx_darwin_arm64.tar.gz
+          inwx_linux_amd64.tar.gz
+          inwx_linux_arm64.tar.gz"
+          test "$(find release -maxdepth 1 -name 'inwx_*.tar.gz' -printf '%f\n' | sort)" = "$EXPECTED"
+          for archive in release/inwx_*.tar.gz; do
+            CONTENTS=$(tar -tzf "$archive" | sort)
+            printf '%s\n' "$CONTENTS" | grep -Fx "inwx"
+            printf '%s\n' "$CONTENTS" | grep -Fx "LICENSE"
+            printf '%s\n' "$CONTENTS" | grep -Fx "skills/inwx/SKILL.md"
+            EXTRACT="$RUNNER_TEMP/$(basename "$archive" .tar.gz)"
+            mkdir -p "$EXTRACT"
+            tar -xzf "$archive" -C "$EXTRACT"
+            diff -ru skills/inwx "$EXTRACT/skills/inwx"
+          done
+      - name: Create and authenticate checksum manifest
+        run: |
+          (
+            cd release
+            sha256sum inwx_*.tar.gz | sort -k2,2 > checksums.txt
+            cosign sign-blob --yes \
+              --bundle checksums.txt.sigstore.json \
+              --output-signature checksums.txt.sig \
+              --output-certificate checksums.txt.pem \
+              checksums.txt
+          )
+          IDENTITY_TAG=$(printf '%s' "$GITHUB_REF_NAME" | sed 's/\./\\./g')
+          cosign verify-blob \
+            --bundle release/checksums.txt.sigstore.json \
+            --certificate-identity-regexp "^https://github\\.com/k2b-dev/inwx-cli/\\.github/workflows/release\\.yml@refs/tags/${IDENTITY_TAG}$" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            release/checksums.txt
+      - name: Smoke exact installer artifacts
+        run: |
+          SERVE="$RUNNER_TEMP/serve"
+          mkdir -p "$SERVE/download/$GITHUB_REF_NAME"
+          cp release/* "$SERVE/download/$GITHUB_REF_NAME/"
+          python3 -m http.server 48713 --bind 127.0.0.1 --directory "$SERVE" \
+            >"$RUNNER_TEMP/http.log" 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID"' EXIT
+          INWX_INSTALL_RELEASE_BASE="http://127.0.0.1:48713" \
+          INWX_INSTALL_COSIGN_BIN="$(command -v cosign)" \
+            ./scripts/install.sh --yes --version="$GITHUB_REF_NAME" \
+              --prefix="$RUNNER_TEMP/installed/bin"
+          "$RUNNER_TEMP/installed/bin/inwx" version |
+            grep -F "inwx ${GITHUB_REF_NAME#v} (commit ${GITHUB_SHA}, built "
+      - name: Verify invalid authentication redaction on OT&E
+        run: |
+          set +e
+          INWX_USERNAME="release-smoke-invalid-user" \
+          INWX_PASSWORD="release-smoke-invalid-password" \
+            "$RUNNER_TEMP/installed/bin/inwx" --json --environment ote auth check \
+              >"$RUNNER_TEMP/auth.stdout" 2>"$RUNNER_TEMP/auth.stderr"
+          STATUS=$?
+          set -e
+          test "$STATUS" -eq 3
+          test ! -s "$RUNNER_TEMP/auth.stdout"
+          grep -F '"kind":"authentication"' "$RUNNER_TEMP/auth.stderr"
+          ! grep -F "release-smoke-invalid" \
+            "$RUNNER_TEMP/auth.stdout" "$RUNNER_TEMP/auth.stderr"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "inwx $GITHUB_REF_NAME" \
+            --notes-file .github/release-notes.md

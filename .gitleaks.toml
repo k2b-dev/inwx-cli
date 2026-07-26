@@ -1,0 +1,11 @@
+title = "inwx-cli secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public RFC 6238 base32 test vector used by TOTP unit tests"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ$''']
+paths = ['''^internal/inwx/client_test\.go$''']
