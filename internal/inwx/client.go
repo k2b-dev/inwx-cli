@@ -213,7 +213,7 @@ func (client *Client) ListZones(ctx context.Context) ([]Zone, error) {
 		}
 
 		for _, item := range data.Domains {
-			zone, err := dns.NormalizeZone(item.Domain)
+			zone, err := dns.NormalizeZone(strings.TrimSpace(item.Domain))
 			if err != nil {
 				return nil, fmt.Errorf("normalize INWX zone %q: %w", item.Domain, err)
 			}

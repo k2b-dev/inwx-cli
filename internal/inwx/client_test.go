@@ -170,6 +170,30 @@ func TestListZonesPaginatesAndSorts(t *testing.T) {
 	}
 }
 
+func TestListZonesTrimsProviderWhitespace(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writeEnvelope(t, writer, 1000, map[string]any{
+			"count": 1,
+			"domains": []map[string]any{{
+				"domain": "rz.it.kolb-antik.com ",
+				"type":   "MASTER",
+			}},
+		})
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL, Options{})
+	zones, err := client.ListZones(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(zones) != 1 || zones[0].Name != "rz.it.kolb-antik.com." {
+		t.Fatalf("unexpected zones %#v", zones)
+	}
+}
+
 func TestListRecordsUsesCompleteFixture(t *testing.T) {
 	t.Parallel()
 
@@ -194,6 +218,36 @@ func TestListRecordsUsesCompleteFixture(t *testing.T) {
 		if record.ID == "" {
 			t.Fatal("record ID was discarded")
 		}
+	}
+}
+
+func TestListRecordsPreservesNonCanonicalProviderTarget(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writeEnvelope(t, writer, 1000, map[string]any{
+			"count": 1,
+			"record": []map[string]any{{
+				"id":      "81006",
+				"name":    "gw.it.kolb-antik.com",
+				"type":    "CNAME",
+				"content": "109_70_197_43.rz.it.kolb-antik.com",
+				"ttl":     300,
+				"prio":    0,
+			}},
+		})
+	}))
+	defer server.Close()
+
+	client := newTestClient(t, server.URL, Options{})
+	records, err := client.ListRecords(context.Background(), "kolb-antik.com.")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(records) != 1 ||
+		records[0].ID != "81006" ||
+		records[0].Value != "109_70_197_43.rz.it.kolb-antik.com." {
+		t.Fatalf("unexpected records %#v", records)
 	}
 }
 

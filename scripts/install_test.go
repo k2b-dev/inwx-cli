@@ -259,7 +259,7 @@ func TestInstallHelpAndCredentialBoundary(t *testing.T) {
 func TestInstallerCommandsAreDocumentedExactly(t *testing.T) {
 	repositoryRoot := filepath.Clean("..")
 	canonical := "curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/main/scripts/install.sh | sh"
-	pinned := "curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.0/scripts/install.sh | sh -s -- --version=v0.1.0"
+	pinned := "curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.1/scripts/install.sh | sh -s -- --version=v0.1.1"
 	for _, path := range []string{
 		filepath.Join(repositoryRoot, "README.md"),
 		filepath.Join(repositoryRoot, "docs-site", "docs", "en", "installation.md"),

@@ -21,7 +21,7 @@ curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/main/scripts/insta
 Pin both the installer source and selected binary release:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.0/scripts/install.sh | sh -s -- --version=v0.1.0
+curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.1/scripts/install.sh | sh -s -- --version=v0.1.1
 ```
 
 Review a downloaded script before running it when your environment requires

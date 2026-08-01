@@ -25,10 +25,10 @@ Install the latest stable release:
 curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/main/scripts/install.sh | sh
 ```
 
-To pin both the installer and binary to v0.1.0:
+To pin both the installer and binary to v0.1.1:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.0/scripts/install.sh | sh -s -- --version=v0.1.0
+curl -fsSL https://raw.githubusercontent.com/k2b-dev/inwx-cli/v0.1.1/scripts/install.sh | sh -s -- --version=v0.1.1
 ```
 
 The installer verifies the release workflow identity, signature, checksum, and

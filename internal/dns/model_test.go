@@ -99,6 +99,24 @@ func TestUnknownRecordTypePassesThroughReadOnly(t *testing.T) {
 	}
 }
 
+func TestFromAPIPreservesNonCanonicalTargetReadOnly(t *testing.T) {
+	t.Parallel()
+
+	record, err := FromAPI("kolb-antik.com.", RawRecord{
+		ID:      "92",
+		Name:    "gw.it.kolb-antik.com",
+		Type:    "CNAME",
+		Content: "109_70_197_43.rz.it.kolb-antik.com",
+		TTL:     300,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.ID != "92" || record.Value != "109_70_197_43.rz.it.kolb-antik.com." {
+		t.Fatalf("provider target was not preserved: %#v", record)
+	}
+}
+
 func TestStringIDAcceptsStringAndInteger(t *testing.T) {
 	t.Parallel()
 
@@ -154,6 +172,7 @@ func TestNewRecordRejectsMalformedAndUnsupportedInput(t *testing.T) {
 	}{
 		{"A", "2001:db8::1", 300, nil},
 		{"AAAA", "192.0.2.1", 300, nil},
+		{"CNAME", "109_70_197_43.rz.example.test", 300, nil},
 		{"TXT", "line\nbreak", 300, nil},
 		{"SRV", "value", 300, nil},
 		{"A", "192.0.2.1", 299, nil},

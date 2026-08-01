@@ -150,7 +150,7 @@ func FromAPI(zone string, raw RawRecord) (Record, error) {
 		return Record{}, fmt.Errorf("API record TTL %d is outside %d..%d", raw.TTL, MinTTL, MaxTTL)
 	}
 
-	value, err := normalizeValue(recordType, raw.Content)
+	value, err := normalizeAPIValue(recordType, raw.Content)
 	if err != nil {
 		return Record{}, fmt.Errorf("invalid %s record value: %w", recordType, err)
 	}
@@ -294,6 +294,28 @@ func normalizeValue(recordType, value string) (string, error) {
 		}
 		return value, nil
 	}
+}
+
+func normalizeAPIValue(recordType, value string) (string, error) {
+	canonical, err := normalizeValue(recordType, value)
+	if err == nil {
+		return canonical, nil
+	}
+	if recordType != "CNAME" && recordType != "MX" {
+		return "", err
+	}
+	if value == "" || value != strings.TrimSpace(value) {
+		return "", err
+	}
+	target, fallbackErr := asciiRecordName(strings.TrimSuffix(value, "."))
+	if fallbackErr != nil {
+		return "", err
+	}
+	target = strings.ToLower(target)
+	if fallbackErr := validateDomain(target, true); fallbackErr != nil {
+		return "", err
+	}
+	return target + ".", nil
 }
 
 func asciiRecordName(name string) (string, error) {
